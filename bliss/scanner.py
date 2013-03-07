@@ -136,9 +136,10 @@ def get_files(n):
     base = '/mnt/pub/movies'
     fs = []
     for f in os.listdir(os.path.join(base, n)):
-        ext = os.path.splitext(f)[1].lower()
-        if ext in ['.avi', '.mpg', '.mkv']:
-            fs.append(f)
+        if f.lower().find("sample") == -1:
+            ext = os.path.splitext(f)[1].lower()
+            if ext in ['.avi', '.mpg', '.mkv']:
+                fs.append(f)
     return sorted(fs)
 
 def get_duration(n):

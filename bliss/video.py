@@ -15,7 +15,7 @@ def transcode(source, output, bitrate, baseline):
         ffmpeg = None
         try: 
             if output == "webm":
-                c = "-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate %dk -bufsize 1000k -threads 4 -codec:a libvorbis -b:a 128k -f webm" % bitrate
+                c = "-codec:v libvpx -quality good -cpu-used 0 -b:v %dk -qmin 10 -qmax 42 -maxrate %dk -bufsize 1000k -threads 0 -codec:a libvorbis -b:a 128k -f webm" % (bitrate, bitrate)
             elif output == "mp4":
                 c = "-c:v libx264 -crf 23 -maxrate %dk -bufsize 1835k -c:a libfaac -f mp4 -movflags frag_keyframe+empty_moov" % bitrate
                 if baseline:

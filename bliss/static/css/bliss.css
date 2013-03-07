@@ -1,0 +1,11 @@
+body {
+    padding-top: 60px;
+}
+@media (max-width: 979px) {
+    body {
+        padding-top: 0px;
+    }
+}
+video { max-width: 100%; height: auto; }
+
+.foo { overflow: hidden; }

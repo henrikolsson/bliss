@@ -21,7 +21,6 @@ logger = logging.getLogger('bliss.views')
 def after_this_request(f):
     if not hasattr(g, 'after_request_callbacks'):
         g.after_request_callbacks = []
-    print "registered", f
     g.after_request_callbacks.append(f)
     return f
 
@@ -45,25 +44,19 @@ def urlencode_ts2date(s):
 
 @app.before_request
 def handle_settings():
-    print "hmm"
     h264_compatability = None
     if request.cookies.get('h264_compatability') is not None:
         h264_compatability = request.cookies.get('h264_compatability') == "True"
     bitrate = request.cookies.get('bitrate')
-    print bitrate
     if h264_compatability is None:
         h264_compatability = False
         @after_this_request
         def remember_h264_compatability(response):
-            print "setting cookie"
             response.set_cookie('h264_compatability', h264_compatability)
     if bitrate is None:
         bitrate = 4000
-        print "asd"
         @after_this_request
         def remember_settings(response):
-            print "aaaaa"
-            print response
             response.set_cookie('bitrate', bitrate)
     else:
         bitrate = int(bitrate)
@@ -126,6 +119,5 @@ def movie(movieid):
 
 @app.route("/video/movie/<movieid>/<fileid>/<format>")
 def video_movie(movieid, fileid, format):
-    print transcode
     return transcode('/mnt/pub/movies/%s/%s' % (movieid, fileid), format, g.bitrate, g.h264_compatability)
 
