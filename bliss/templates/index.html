@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" action="/save">
+  <input type="checkbox" id="h264_compatability" name="h264_compatability" value="True" {% if h264_compatability %} checked {% endif %}>
+  <label style="display: inline-block;" for="h264_compatability">Use compatability mode for H264</label>
+  <br>
+  <input type="text" id="bitrate" name="bitrate" value="{{ bitrate }}">
+  <label for="bitrate">Maximum bitrate in kilobits</label>
+  <input type="submit" value="Save">
+</form>
+{% endblock %}

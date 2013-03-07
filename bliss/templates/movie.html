@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ movie.title }}</h2>
+{% for name, file in movie.files.iteritems() %}
+<p>{{ name }}</p>
+<video preload="none" controls tabindex="0" width="{{ width }}" height="{{ height }}">
+  <source src="/video/movie/{{ movie.id|urlencode }}/{{ name|urlencode }}/webm" type='video/webm; codecs="vp8.0, vorbis"' />
+  <source src="/video/movie/{{ movie.id|urlencode }}/{{ name|urlencode }}/mp4" type='video/mp4; codecs="avc1.4D401E, mp4a.40.2"' />
+  Your browser sucks.
+</video>
+{% endfor %}
+{% endblock %}

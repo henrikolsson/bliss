@@ -1,0 +1,5 @@
+resources/cache
+env/
+bliss.log
+syntax: glob
+*.pyc

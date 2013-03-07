@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+{% for movie in movies %}
+<a href="/movie/{{ movie|urlencode }}">{{ movie }}</a><br />
+{% endfor %}
+{% endblock %}
