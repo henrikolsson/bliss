@@ -8,6 +8,7 @@ from bliss.utils import escape_generic
 
 def get_json(url, data):
     url = '%s?%s' % (url, urllib.urlencode(OrderedDict(sorted(data.items()))))
+#    print url
     cache_dir = os.path.join(os.path.dirname(__file__), '..', 'resources', 'cache')
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)

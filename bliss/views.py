@@ -1,4 +1,5 @@
 from datetime import datetime, date
+import memcache
 import select
 import os
 import fcntl
@@ -8,15 +9,60 @@ import shlex
 import traceback
 import couchdb
 from pymediainfo import MediaInfo
-from flask import Flask, Response, render_template, request, g, redirect, url_for
+from flask import Flask, Response, render_template, request, g, redirect, url_for, send_file
 from bliss import app
 import logging
 from bliss.video import transcode
 from bliss.client import post_json
 import urllib
 from markupsafe import Markup
+import mimetypes
+import re
+import bliss.config as config
 
 logger = logging.getLogger('bliss.views')
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Accept-Ranges', 'bytes')
+    return response
+
+
+def send_file_partial(path):
+    """ 
+        Simple wrapper around send_file which handles HTTP 206 Partial Content
+        (byte ranges)
+        TODO: handle all send_file args, mirror send_file's error handling
+        (if it has any)
+    """
+    range_header = request.headers.get('Range', None)
+    if not range_header: return send_file(path)
+    logger.info("Range: %s" % range_header)
+    size = os.path.getsize(path)    
+    byte1, byte2 = 0, None
+    
+    m = re.search('(\d+)-(\d*)', range_header)
+    g = m.groups()
+    
+    if g[0]: byte1 = int(g[0])
+    if g[1]: byte2 = int(g[1])
+
+    length = size - byte1
+    if byte2 is not None:
+        length = byte2 - byte1
+    
+    data = None
+    with open(path, 'rb') as f:
+        f.seek(byte1)
+        data = f.read(length)
+
+    rv = Response(data, 
+        206,
+        mimetype=mimetypes.guess_type(path)[0], 
+        direct_passthrough=True)
+    rv.headers.add('Content-Range', 'bytes {0}-{1}/{2}'.format(byte1, byte1 + length - 1, size))
+
+    return rv
 
 def after_this_request(f):
     if not hasattr(g, 'after_request_callbacks'):
@@ -35,7 +81,7 @@ def urlencode_filter(s):
     if type(s) == 'Markup':
         s = s.unescape()
     s = s.encode('utf8')
-    s = urllib.quote_plus(s)
+    s = urllib.quote(s)
     return Markup(s)
 
 @app.template_filter('ts2date')
@@ -54,7 +100,7 @@ def handle_settings():
         def remember_h264_compatability(response):
             response.set_cookie('h264_compatability', h264_compatability)
     if bitrate is None:
-        bitrate = 4000
+        bitrate = 400
         @after_this_request
         def remember_settings(response):
             response.set_cookie('bitrate', bitrate)
@@ -86,27 +132,22 @@ def tv():
 def channel(channel):
     return render_template("channel.html", channel=channel)
 
-@app.route("/video/tv/<int:channel>/<format>")
-def video_tv(channel, format):
-    return transcode('http://chani:9981/stream/channelid/%d' % channel, format, g.bitrate, g.h264_compatability)
-
 @app.route("/movies")
 def movies():
-    couch = couchdb.Server()
-    if not 'bliss' in couch:
-        db = couch.create('bliss')
-    else:
-        db = couch['bliss']
-    return render_template("movies.html", movies=db.__iter__())
+    result = config.db.view('_design/movie/_view/all')
+    return render_template("movies.html", movies=list(result))
+
+@app.route("/player/<type>/<playid>")
+def player(type, playid):
+    return render_template("player.html", type=type, id=playid)
+
+@app.route("/poster/<movieid>")
+def poster(movieid):
+    return config.db.get_attachment(movieid, "poster").read()
 
 @app.route("/movie/<movieid>")
 def movie(movieid):
-    couch = couchdb.Server()
-    if not 'bliss' in couch:
-        db = couch.create('bliss')
-    else:
-        db = couch['bliss']
-    movie = db[movieid]
+    movie = config.db[movieid]
     width = 320
     height = 240
     for fn in movie["files"]:
@@ -117,7 +158,13 @@ def movie(movieid):
                 height = track["height"]
     return render_template("movie.html", movie=movie, width=width, height=height)
 
-@app.route("/video/movie/<movieid>/<fileid>/<format>")
-def video_movie(movieid, fileid, format):
-    return transcode('/mnt/pub/movies/%s/%s' % (movieid, fileid), format, g.bitrate, g.h264_compatability)
-
+@app.route("/video/<type>/<playid>/<format>")
+def video_movie(type, playid, format):
+    if (type == "movie"):
+        doc = config.db[playid]
+        sources = map(lambda f: '/mnt/pub/movies/%s/%s' % (playid, f), sorted(doc['files'].keys()))
+        return transcode(sources, format, g.bitrate, g.h264_compatability)
+    elif (type == "tv"):
+        return transcode(['http://chani:9981/stream/channelid/%d' % int(playid)], format, g.bitrate, g.h264_compatability)
+    else:
+        raise Exception("Unhandled type: %s" % type)

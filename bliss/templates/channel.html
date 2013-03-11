@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<video preload="none" controls tabindex="0" width="720" height="576">
+<video id="video" preload="none" controls tabindex="0" onerror="failed(event)">
   <source src="/video/tv/{{ channel }}/webm" type='video/webm; codecs="vp8.0, vorbis"' />
   <source src="/video/tv/{{ channel }}/mp4" type='video/mp4; codecs="avc1.4D401E, mp4a.40.2"' />
   Your browser sucks.

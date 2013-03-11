@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>bliss</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="mobileoptimized" content="0" />    
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" media="screen">
+    <link href="{{ url_for('static', filename='css/bootstrap-responsive.min.css') }}" rel="stylesheet" media="screen">
+    <link href="{{ url_for('static', filename='css/darkstrap-v0.9.0.css') }}" rel="stylesheet" media="screen">    
+    <link href="{{ url_for('static', filename='css/bliss.css') }}" rel="stylesheet" media="screen">
+    <link href="{{ url_for('static', filename='css/jquery-ui-1.10.1.custom.css') }}" rel="stylesheet" media="screen">
+    <link href="{{ url_for('static', filename='css/acornmediaplayer.base.css') }}" rel="stylesheet" media="screen">
+    <link href="{{ url_for('static', filename='css/themes/darkglass/acorn.darkglass.css') }}" rel="stylesheet" media="screen">
+    <script type="text/javascript">
+      function hideAddressBar(){
+      if(document.documentElement.scrollHeight<window.outerHeight/window.devicePixelRatio)
+                                                 document.documentElement.style.height=(window.outerHeight/window.devicePixelRatio)+'px';
+                                                 setTimeout(window.scrollTo(1,1),0);
+                                                 }
+                                                 window.addEventListener("load",function(){hideAddressBar();});
+                                                 window.addEventListener("orientationchange",function(){hideAddressBar();});
+                                                 </script>
+    <script>
+      function failed(e) {
+      // video playback failed - show a message saying why
+      switch (e.target.error.code) {
+      case e.target.error.MEDIA_ERR_ABORTED:
+      alert('You aborted the video playback.');
+      break;
+      case e.target.error.MEDIA_ERR_NETWORK:
+      alert('A network error caused the video download to fail part-way.');
+      break;
+      case e.target.error.MEDIA_ERR_DECODE:
+      alert('The video playback was aborted due to a corruption problem or because the video used features your browser did not support.');
+      break;
+      case e.target.error.MEDIA_ERR_SRC_NOT_SUPPORTED:
+      alert('The video could not be loaded, either because the server or network failed or because the format is not supported.');
+      break;
+      default:
+      alert('An unknown error occurred.');
+      break;
+      }
+      }
+    </script>
+  </head>
+  <body style="margin: 0; padding: 0">
+    <video id="video" preload="none" autoplay controls tabindex="0" onerror="failed(event)" width="720" height="576">
+      <source src="/video/{{ type|urlencode }}/{{ id|urlencode }}/webm" type='video/webm; codecs="vp8.0, vorbis"' />
+      <source src="/video/{{ type|urlencode }}/{{ id|urlencode }}/mp4" type='video/mp4; codecs="avc1.4D401E, mp4a.40.2"' />
+      Your browser sucks, go away.
+    </video>
+    <div class="ghinda-video-controls">
+      <a class="ghinda-video-play" title="Play/Pause"></a>
+      <div class="ghinda-video-seek"></div>
+      <div class="ghinda-video-timer">00:00</div>
+      <div class="ghinda-volume-box">
+        <div class="ghinda-volume-slider"></div>
+        <a class="ghinda-volume-button" title="Mute/Unmute"></a>
+      </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/jquery-1.9.1.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery-ui-1.10.1.custom.js') }}"></script>
+    <!-- <script src="{{ url_for('static', filename='js/jquery.acornmediaplayer.js') }}"></script> -->
+    <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bliss.js') }}"></script>
+  </body>
+</html>

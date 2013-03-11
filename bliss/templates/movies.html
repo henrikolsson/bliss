@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
 {% for movie in movies %}
-<a href="/movie/{{ movie|urlencode }}">{{ movie }}</a><br />
+<a href="/movie/{{ movie.value._id|urlencode }}">{{ movie.value.title }}</a><br />
 {% endfor %}
 {% endblock %}
