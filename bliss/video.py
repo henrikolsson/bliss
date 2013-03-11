@@ -10,10 +10,14 @@ import logging
 
 logger = logging.getLogger('bliss.video')
 
-def transcode(source, output, bitrate, baseline):
-    def generate(source):
+def transcode(source, output, bitrate, baseline, seek=None):
+    def generate(source, seek):
         ffmpeg = None
-        try: 
+        try:
+            if seek is not None:
+                seek = "-ss %s " % seek
+            else:
+                seek = ""
             if output == "webm":
                 c = "-codec:v libvpx -deadline realtime -cpu-used 4 -b:v %dk -qmin 10 -qmax 42 -maxrate %dk -bufsize 1000k -threads 0 -codec:a libvorbis -b:a 128k -f webm" % (bitrate, bitrate)
             elif output == "mp4":
@@ -24,7 +28,7 @@ def transcode(source, output, bitrate, baseline):
                 raise Exception("Don't know how to handle output: %s" % output)
             source = map(lambda x: "'%s'" % x, source)
             source = " -i ".join(source)
-            cmd = ("/usr/bin/ffmpeg -i %s "
+            cmd = ("/usr/bin/ffmpeg %s -i %s "
                    #"-c:v libx264 "
                    #"-crf 20 "
                    #"-maxrate 400k "
@@ -34,7 +38,7 @@ def transcode(source, output, bitrate, baseline):
                    #"-f mp4 "
                    #"-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 4 -codec:a libvorbis -b:a 128k -f webm "
                    '%s '
-                   "-" % (source, c))
+                   "-" % (seek, source, c))
             logger.debug("cmd: %s" % cmd)
             ffmpeg = subprocess.Popen(shlex.split(cmd.encode('utf-8')), stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             out = ffmpeg.stdout.fileno()
@@ -65,7 +69,7 @@ def transcode(source, output, bitrate, baseline):
         mime = "video/webm"
     elif output == "mp4":
         mime = "video/mp4"
-    return Response(generate(source), mimetype=mime)
+    return Response(generate(source, seek), mimetype=mime)
     
 def set_nonblock(fd):
      fcntl.fcntl(fd,

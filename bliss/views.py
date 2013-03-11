@@ -139,7 +139,10 @@ def movies():
 
 @app.route("/player/<type>/<playid>")
 def player(type, playid):
-    return render_template("player.html", type=type, id=playid)
+    duration = None
+    if (type == "movie"):
+        duration = config.db[playid]["duration"] * 60
+    return render_template("player.html", type=type, id=playid, duration=duration)
 
 @app.route("/poster/<movieid>")
 def poster(movieid):
@@ -163,11 +166,13 @@ def movie(movieid):
 
 @app.route("/video/<type>/<playid>/<format>")
 def video_movie(type, playid, format):
+    seek = request.args.get('seek')
+    print seek
     if (type == "movie"):
         doc = config.db[playid]
         sources = sorted(doc['files'].keys())
-        return transcode(sources, format, g.bitrate, g.h264_compatability)
+        return transcode(sources, format, g.bitrate, g.h264_compatability, seek)
     elif (type == "tv"):
-        return transcode(['http://chani:9981/stream/channelid/%d' % int(playid)], format, g.bitrate, g.h264_compatability)
+        return transcode(['http://chani:9981/stream/channelid/%d' % int(playid)], format, g.bitrate, g.h264_compatability, seek)
     else:
         raise Exception("Unhandled type: %s" % type)

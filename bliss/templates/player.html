@@ -8,19 +8,11 @@
     <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" media="screen">
     <link href="{{ url_for('static', filename='css/bootstrap-responsive.min.css') }}" rel="stylesheet" media="screen">
     <link href="{{ url_for('static', filename='css/darkstrap-v0.9.0.css') }}" rel="stylesheet" media="screen">    
+    <link href="{{ url_for('static', filename='css/jquery-ui-1.10.1.custom.min.css') }}" rel="stylesheet" media="screen">
+	<link href="{{ url_for('static', filename='css/acornmediaplayer.base.css') }}" rel="stylesheet" type="text/css">
+	<link href="{{ url_for('static', filename='css/themes/access/acorn.access.css') }}" rel="stylesheet" type="text/css">
+	<link href="{{ url_for('static', filename='css/themes/darkglass/acorn.darkglass.css') }}" rel="stylesheet" type="text/css">
     <link href="{{ url_for('static', filename='css/bliss.css') }}" rel="stylesheet" media="screen">
-    <link href="{{ url_for('static', filename='css/jquery-ui-1.10.1.custom.css') }}" rel="stylesheet" media="screen">
-    <link href="{{ url_for('static', filename='css/acornmediaplayer.base.css') }}" rel="stylesheet" media="screen">
-    <link href="{{ url_for('static', filename='css/themes/darkglass/acorn.darkglass.css') }}" rel="stylesheet" media="screen">
-    <script type="text/javascript">
-      function hideAddressBar(){
-      if(document.documentElement.scrollHeight<window.outerHeight/window.devicePixelRatio)
-                                                 document.documentElement.style.height=(window.outerHeight/window.devicePixelRatio)+'px';
-                                                 setTimeout(window.scrollTo(1,1),0);
-                                                 }
-                                                 window.addEventListener("load",function(){hideAddressBar();});
-                                                 window.addEventListener("orientationchange",function(){hideAddressBar();});
-                                                 </script>
     <script>
       function failed(e) {
       // video playback failed - show a message saying why
@@ -43,26 +35,22 @@
       }
       }
     </script>
+    <style type="text/css">
+      body {
+      padding-top: 0;
+      }
+    </style>
   </head>
-  <body style="margin: 0; padding: 0">
-    <video id="video" preload="none" autoplay controls tabindex="0" onerror="failed(event)" width="720" height="576">
-      <source src="/video/{{ type|urlencode }}/{{ id|urlencode }}/webm" type='video/webm; codecs="vp8.0, vorbis"' />
-      <source src="/video/{{ type|urlencode }}/{{ id|urlencode }}/mp4" type='video/mp4; codecs="avc1.4D401E, mp4a.40.2"' />
+  <body>
+    <video id="video" preload="none" tabindex="0" onerror="failed(event)" data-duration="{{ duration }}">
+      <source src="/video/{{ type|urlencode }}/{{ id|urlencode }}/webm?seek=0" type='video/webm; codecs="vp8.0, vorbis"' />
+      <source src="/video/{{ type|urlencode }}/{{ id|urlencode }}/mp4?seek=0" type='video/mp4; codecs="avc1.4D401E, mp4a.40.2"' />
       Your browser sucks, go away.
     </video>
-    <div class="ghinda-video-controls">
-      <a class="ghinda-video-play" title="Play/Pause"></a>
-      <div class="ghinda-video-seek"></div>
-      <div class="ghinda-video-timer">00:00</div>
-      <div class="ghinda-volume-box">
-        <div class="ghinda-volume-slider"></div>
-        <a class="ghinda-volume-button" title="Mute/Unmute"></a>
-      </div>
-    </div>
     <script src="{{ url_for('static', filename='js/jquery-1.9.1.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/jquery-ui-1.10.1.custom.js') }}"></script>
-    <!-- <script src="{{ url_for('static', filename='js/jquery.acornmediaplayer.js') }}"></script> -->
+    <script src="{{ url_for('static', filename='js/jquery-ui-1.10.1.custom.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery.acornmediaplayer.js') }}"></script>
     <script src="{{ url_for('static', filename='js/bliss.js') }}"></script>
   </body>
 </html>
