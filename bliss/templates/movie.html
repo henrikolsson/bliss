@@ -1,7 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>{{ movie.title }}</h2>
-<img class="poster" src="/poster/{{ movie.id }}">
-<br><br>
-<a href="/player/movie/{{ movie.id|urlencode }}"><button type="button" class="btn btn-primary play">Play</button></a>
+<div class="row-fluid">
+  <div class="span3"><img class="poster" src="/poster/{{ movie.id }}"></div>
+  <div class="span9">
+    <h2>{{ movie.title }}</h2>
+    <h5 style="color:#aaa">{{ movie.genres[:3]|join(', ') }}</h5>
+    <br><br>
+    <strong><p>{{ movie.taglines[0] }}</p></strong>
+  </div>
+</div>
+<br>
+<div class="row-fluid">
+  <div class="span3"><a href="/player/movie/{{ movie.id|urlencode }}"><button type="button" class="btn btn-primary play">Play</button></a></div>
+</div>
 {% endblock %}
