@@ -77,6 +77,8 @@ def search(name, year, duration, alias=False):
             "type":          "/film/film",
             "id":            None,
             "name":  None,
+            "genre": [{}],
+            "tagline": [{}],
             "/common/topic/alias": [{}],
             "limit":         1}]
     if alias:
@@ -160,6 +162,8 @@ if __name__ == "__main__":
             else:
                 data = {"_id": realid,
                         "title": match["name"],
+                        "taglines": map(lambda tagline: tagline["value"], match["tagline"]),
+                        "genres": map(lambda genre: genre["name"], match["genre"]),
                         "type": "movie"}
                 data["files"] = {}
                 for f in files:
