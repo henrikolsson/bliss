@@ -11,18 +11,20 @@ import logging
 logger = logging.getLogger('bliss.video')
 
 def transcode(source, output, bitrate, baseline):
-    def generate():
+    def generate(source):
         ffmpeg = None
         try: 
             if output == "webm":
-                c = "-codec:v libvpx -quality good -cpu-used 0 -b:v %dk -qmin 10 -qmax 42 -maxrate %dk -bufsize 1000k -threads 0 -codec:a libvorbis -b:a 128k -f webm" % (bitrate, bitrate)
+                c = "-codec:v libvpx -deadline realtime -cpu-used 4 -b:v %dk -qmin 10 -qmax 42 -maxrate %dk -bufsize 1000k -threads 0 -codec:a libvorbis -b:a 128k -f webm" % (bitrate, bitrate)
             elif output == "mp4":
                 c = "-c:v libx264 -crf 23 -maxrate %dk -bufsize 1835k -c:a libfaac -f mp4 -movflags frag_keyframe+empty_moov" % bitrate
                 if baseline:
-                    c = c + " -profile:v baseline"
+                    c = "-c:v libx264 -c:a libfaac -f mp4 -movflags frag_keyframe+empty_moov -profile:v baseline"
             else:
                 raise Exception("Don't know how to handle output: %s" % output)
-            cmd = ("/usr/bin/ffmpeg -i '%s' "
+            source = map(lambda x: "'%s'" % x, source)
+            source = " -i ".join(source)
+            cmd = ("/usr/bin/ffmpeg -i %s "
                    #"-c:v libx264 "
                    #"-crf 20 "
                    #"-maxrate 400k "
@@ -34,7 +36,7 @@ def transcode(source, output, bitrate, baseline):
                    '%s '
                    "-" % (source, c))
             logger.debug("cmd: %s" % cmd)
-            ffmpeg = subprocess.Popen(shlex.split(cmd), stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+            ffmpeg = subprocess.Popen(shlex.split(cmd.encode('utf-8')), stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             out = ffmpeg.stdout.fileno()
             err = ffmpeg.stderr.fileno()
             set_nonblock(out)
@@ -47,7 +49,8 @@ def transcode(source, output, bitrate, baseline):
                     raise Exception("Exceptional condition happened")
                     return
                 if out in rlist:
-                    yield ffmpeg.stdout.read()
+                    data = ffmpeg.stdout.read()
+                    yield data
                 if err in rlist:
                     r = ffmpeg.stderr.read()
                     if len(r) == 0:
@@ -62,7 +65,7 @@ def transcode(source, output, bitrate, baseline):
         mime = "video/webm"
     elif output == "mp4":
         mime = "video/mp4"
-    return Response(generate(), mimetype=mime)
+    return Response(generate(source), mimetype=mime)
     
 def set_nonblock(fd):
      fcntl.fcntl(fd,
