@@ -8,49 +8,10 @@ body {
     }
 }
 
-.foo { overflow: hidden; }
-
-#video-container {
-    height: 100%;
-    width: 100%;
-    left: 0;
-    top: 0;
-    padding: 0;
-    margin: 0;
-    overflow: hidden;
-    position: absolute;
-    text-align: center;
-}
-
 video {
-    width: 100%    !important;
-    height: auto   !important;
+    max-width: 100%;
 }
 
-.poster {
-    width: 100%;
-    height: auto;
-}
-
-.play {
-    width: 100%;
-}
-
-.ghinda-video-player {
-	float: left;
-	padding: 10px;
-	border: 5px solid #61625d;
-		
-	-moz-border-radius: 5px; /* FF1+ */
-    -ms-border-radius: 5px; /* IE future proofing */
-	-webkit-border-radius: 5px; /* Saf3+, Chrome */
-	border-radius: 5px; /* Opera 10.5, IE 9 */
-	
-	background: #000000;
-	background-image: -moz-linear-gradient(top, #313131, #000000); /* FF3.6 */
-	background-image: -webkit-gradient(linear,left top,left bottom,color-stop(0, #313131),color-stop(1, #000000)); /* Saf4+, Chrome */
-	
-	box-shadow: inset 0 15px 35px #535353;
-}
+.foo { overflow: hidden; }
 
 @-ms-viewport{width:auto!important}}
