@@ -143,7 +143,10 @@ def player(type, playid):
 
 @app.route("/poster/<movieid>")
 def poster(movieid):
-    return config.db.get_attachment(movieid, "poster").read()
+    poster = config.db.get_attachment(movieid, "poster")
+    if poster is None:
+        poster = open(os.path.join(os.path.dirname(__file__), "static", "img", "question.png"), "r")
+    return poster.read()
 
 @app.route("/movie/<movieid>")
 def movie(movieid):

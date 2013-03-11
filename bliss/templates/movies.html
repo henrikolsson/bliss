@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 {% for movie in movies %}
-<a href="/movie/{{ movie.value._id|urlencode }}">{{ movie.value.title }}</a><br />
+{% if loop.index0 % 6 == 0 %}
+<div class="row-fluid">
+{% endif %}
+  <div class="span2" style="text-align: center; padding: 10px">
+    <a href="/movie/{{ movie.value._id|urlencode }}">
+      <img class="poster" src="/poster/{{ movie.value._id }}">
+      <strong>{{ movie.value.title }}<br /></strong>
+    </a>
+  </div>
+{% if loop.index % 6 == 0 %}
+</div>
+{% endif %}
 {% endfor %}
 {% endblock %}
