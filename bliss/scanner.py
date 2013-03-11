@@ -1,20 +1,30 @@
 # -*- coding: utf-8 -*-
+import logging
 import types
 import couchdb
 import os
 import re
 import urllib
 import urllib2
-import simplejson
+import json
 import Levenshtein
 import functools
 import HTMLParser
 import pprint
 import memcache
+import hashlib
+from apiclient import discovery
+from apiclient import model
 from operator import itemgetter, attrgetter
 from pymediainfo import MediaInfo
 from bliss.client import get_json
-from bliss.utils import escape_generic
+from bliss.utils import escape_generic, Unbuffered
+import bliss.config as config
+
+logger = logging.getLogger('bliss.scanner')
+
+model.JsonModel.alt_param = ""
+freebase = discovery.build('freebase', 'v1', developerKey=config.FB_KEY)
 
 def parse_name(name):
     match = re.search('(.+?[^0-9])([0-9]{4})[^0-9]', name)
@@ -23,7 +33,7 @@ def parse_name(name):
         name = match.group(1)
         year = match.group(2)
     name = name.decode('utf-8')
-    name = re.sub(r"[^\w]", " ", name, flags=re.IGNORECASE+re.UNICODE)
+    name = re.sub(r"[^\w-]", " ", name, flags=re.IGNORECASE+re.UNICODE)
     name = re.sub(r"_", " ", name)
     name = re.sub(r"dvdrip.*", "", name, flags=re.IGNORECASE)
     name = re.sub(r"720p.*", "", name, flags=re.IGNORECASE)
@@ -32,165 +42,151 @@ def parse_name(name):
     name = name.encode('utf-8')
     return name, year
 
-def ratio(s1, s2):
-    r = Levenshtein.ratio(s1, s2)
-    return r
-
-def correct_year(year, item):
-    if year is None:
-        return 0
-    match = re.search('^([0-9]{4})', item["description"])
-    if match:
-        return abs(int(match.group(0)) - int(year))
-    else:
-        return 20
-
-def search(title, year, dur):
-    title = title.strip()
-    data = get_json('http://www.imdb.com/xml/find', {'q': title, 'json': '1', 'tt': 'on', 'nr': '1'})
-    weights = {"title_popular": 2.5,
-               "title_exact": 1.8,
-               "title_substring": 0.8,
-               "title_approx": 0.6}
-    matches = []
-    for key in weights.iterkeys():
-        if key in data:
-            i = 0
-            for match in data[key]:
-                match["score"] = {}
-                match["title"] = HTMLParser.HTMLParser().unescape(match["title"])
-                match["title"] = match["title"].encode("utf-8")
-                match["score"]["position"] = (len(data[key]) - i) / float(len(data[key]))
-                match["score"]["type"] = weights[key]
-                match["score"]["year"] = correct_year(year, match)
-                match["score"]["ratio"] = Levenshtein.ratio(match["title"],
-                                                            title)
-                match["score"]["distance"] = Levenshtein.distance(match["title"],
-                                                                  title)
-                
-                matches.append(match)
-                i = i + 1
-    for match in matches:
-        score = match["score"]
-        match["score_value"] = 1
-        match["score_value"] = match["score_value"] - score["year"] / 8.0
-        match["score_value"] = match["score_value"] + score["position"] * 1.4
-        match["score_value"] = match["score_value"] + score["ratio"] * 1.5
-        match["score_value"] = match["score_value"] - score["distance"] / 100.0
-        match["score_value"] = match["score_value"] * score["type"]
-    matches = sorted(matches, key=lambda match: match["score_value"], reverse=True)
-    if dur > 0:
-        ids = ""
-        for match in matches[:10]:
-            ids = ids + match["id"] + ","
-        ids = reduce(lambda acc, match: acc + match["id"] + ',', matches[:10], '')
-#        print "ids: %s" % ids
-        if len(ids) > 0:
-            js = get_json('http://imdbapi.org/', {'episode': '0', 'format': 'json', 'ids': ids})
-            for item in js:
-                for mm in matches[:10]:
-                    if mm['id'] == item["imdb_id"]:
-                        if "runtime" in item:
-                            d = None
-                            
-                            for rt in item['runtime']:
-                                d2 = abs((dur / 1000 / 60) - long(re.search(r"([0-9]+)", rt).group(0)))
-                                if d is None:
-                                    d = d2
-                                else:
-                                    d = min(d, d2)
-                            if d is None:
-                                d = 30
-                            else:
-#                                print mm["title"], (dur / 1000 / 60), d
-                                mm["score"]["duration"] = d
-    for match in matches:
-        score = match["score"]
-        if "duration" in score:
-#            print score["duration"]
-            if score["duration"] < 10:
-                match["score_value"] = match["score_value"] + ((12 - score["duration"]) / 4.0)
-            else:
-                match["score_value"] = match["score_value"] - score["duration"] / 8.0
-        else:
-            match["score_value"] = match["score_value"] - 0.5
-    matches = sorted(matches, key=lambda match: match["score_value"], reverse=True)
-    for match in matches:
-        score = match["score"]
-#        print "%f - (p: %f t: %f y: %f r: %f d: %f) %s %s" % (match["score_value"], score["position"], score["type"], score["year"], score["ratio"], score["distance"], match["title"], match["id"])
-    pp = pprint.PrettyPrinter()
-    if len(matches) == 0 or matches[0]["score_value"] < 1.5:
-         fuzz = " ".join(title.split()[:-1])
-         if len(fuzz) > 0 and not fuzz == title:
-             return search(fuzz, year, dur)
-         elif year is not None:
-             return search(title, None, dur)
-         else:
-             if matches[0]["score_value"] < 1.4:
-                 return None
-             else:
-                 return matches[0]
-    return matches[0]
 
 def get_files(n):
-    base = '/mnt/pub/movies'
     fs = []
-    for f in os.listdir(os.path.join(base, n)):
+    for f in os.listdir(os.path.join(config.BASEDIR, n)):
         if f.lower().find("sample") == -1:
             ext = os.path.splitext(f)[1].lower()
             if ext in ['.avi', '.mpg', '.mkv']:
                 fs.append(f)
     return sorted(fs)
 
-def get_duration(n):
-    base = '/mnt/pub/movies'
+def get_duration(f):
     mc = memcache.Client(['127.0.0.1:11211'], debug=0)
-    key = escape_generic(n)
+    key = escape_generic(f)
     d = mc.get(key)
     if d is not None:
         return d
     else:
         d = 0
-    for f in get_files(n):
-        info = MediaInfo.parse(os.path.join(base, n, f))
-        for track in info.tracks:
-            if getattr(track, 'duration') is not None:
-                d = d + track.duration
-                break
+    info = MediaInfo.parse(f)
+    for track in info.tracks:
+        if getattr(track, 'duration') is not None:
+            d = track.duration
+            break
     mc.set(key, d)
     return d
-            
-if __name__ == "__main__":
-    couch = couchdb.Server()
-    if not 'bliss' in couch:
-        db = couch.create('bliss')
+
+
+def search(name, year, duration, alias=False):
+    name = name.strip()
+    logger.debug("Trying to match %s, %s, %s, %s" % (name, year, duration, alias))
+    query = [{
+            "imdb_id":        {"value" : None, "optional" : True, "limit" : 1},
+            "type":          "/film/film",
+            "id":            None,
+            "name":  None,
+            "/common/topic/alias": [{}],
+            "limit":         1}]
+    if alias:
+        query[0]["/common/topic/alias~="] = name
     else:
-        db = couch['bliss']
-    base = '/mnt/pub/movies'
-    for name in os.listdir(base):
-        if os.path.isdir(os.path.join(base, name)):
+        query[0]["name~="] = name
+    
+    if year is not None:
+        query[0]["initial_release_date"] = [{
+                "type":    "/type/datetime",
+                "value<":  "%d" % (int(year)+2),
+                "value>": "%d" % (int(year)-2), 
+                }]
+    else:
+        query[0]["sort"] = "-initial_release_date"
+        query[0]["initial_release_date"] = None
+    if duration is not None:
+        query[0]["runtime"] = [{
+                "id":            None,
+                "runtime>":       (duration-10),
+                "runtime<":       (duration+10),
+                "type_of_film_cut": None,
+                "film_release_region": None,
+                "note":          None
+                }]
+    else:
+        query[0]["runtime"] = [{
+                "id":            None,
+                "runtime":       None,
+                "type_of_film_cut": None,
+                "film_release_region": None,
+                "note":          None
+                }]
+    logger.debug("executing query:\n%s" % json.dumps(query, indent=4))
+    res = freebase.mqlread(query=json.dumps(query)).execute()
+    response = json.loads(res)
+    if len(response['result']) > 0:
+        return response['result'][0]
+    else:
+        if not alias:
+            return search(name, year, duration, True)
+        else:
+            if duration is not None:
+                return search(name, year, None, True)
+            else:
+                fuzz = " ".join(name.split()[:-1])
+                if len(fuzz) > 0 and not fuzz == name:
+                    return search(fuzz, year, duration, False)
+                else:
+                    return None
+                
+def get_poster(imdb_id):
+    data = get_json('http://api.rottentomatoes.com/api/public/v1.0/movie_alias.json?type=imdb&id=%s&apikey=%s&_prettyprint=true' % (imdb_id.replace("tt", ""), config.RT_KEY), {})
+    if "error" in data:
+        return (None, None)
+    
+    url = data["posters"]["original"]
+    response = urllib2.urlopen(url)
+    data = response.read()
+    
+    return (response.headers["Content-Type"], data)
+    
+if __name__ == "__main__":
+    import sys
+    sys.stdout=Unbuffered(sys.stdout)
+    for name in os.listdir(config.BASEDIR):
+#    for name in ['50-50.mkv']:
+        if os.path.isdir(os.path.join(config.BASEDIR, name)):
             o = name
-            if not o in db:
-                d = get_duration(name)
+            files = get_files(o)
+            d = 0
+            for f in files:
+                d = d + get_duration(os.path.join(config.BASEDIR, o, f))
+            realid = hashlib.md5(",".join(files)).hexdigest()
+            if realid in config.db:
+                continue
+            name, year = parse_name(name)
+            match = search(name, year, d / 1000 / 60)
+            if match is None:
+                print "FAIL | %s | FAIL" % (o)
+            else:
+                data = {"_id": realid,
+                        "title": match["name"],
+                        "type": "movie"}
+                data["files"] = {}
+                for f in files:
+                    data["files"][f] = []
+                    print os.path.join(config.BASEDIR, o, f)
+                    info = MediaInfo.parse(os.path.join(config.BASEDIR, o, f))
+                    for track in info.tracks:
+                        d = {}
+                        for k, v in track.__dict__.iteritems():
+                            if not type(v) == types.InstanceType:
+                                d[k] = v
+                        data["files"][f].append(d)
+                print config.db.save(data)
+                try:
+                    content_type, poster = get_poster(match["imdb_id"]["value"])
+                    if not poster is None:
+                        config.db.put_attachment(data, poster, "poster", content_type)
+                except:
+                    del config.db[data['_id']]
+                    raise
+        else:
+            split = os.path.splitext(name)
+            ext = split[1].lower()
+            if ext in ['.avi', '.mpg', '.mkv']:
+                o = name
+                d = get_duration(os.path.join(base, o))
+                name = split[0]
                 name, year = parse_name(name)
                 m = search(name, year, d)
-                if m is None:
-                    print "FAIL | %s | FAIL" % (o)
-                else:
-                    data = {"_id": o,
-                            "imdbid": m["id"],
-                            "title": m["title"],
-                            "files": {}}
-                    for f in get_files(o):
-                        data["files"][f] = []
-                        print os.path.join(base, o, f)
-                        info = MediaInfo.parse(os.path.join(base, o, f))
-                        for track in info.tracks:
-                            d = {}
-                            for k, v in track.__dict__.iteritems():
-                                if not type(v) == types.InstanceType:
-                                    d[k] = v
-                            data["files"][f].append(d)
-                    db.save(data)
-                    print "%s | %s | %s" % (m['id'], o, m['title'])
-                    print
+                # TODO: Implement
