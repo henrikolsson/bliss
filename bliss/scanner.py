@@ -167,15 +167,15 @@ if __name__ == "__main__":
                         "type": "movie"}
                 data["files"] = {}
                 for f in files:
-                    data["files"][f] = []
-                    print os.path.join(config.BASEDIR, o, f)
-                    info = MediaInfo.parse(os.path.join(config.BASEDIR, o, f))
+                    full = os.path.join(config.BASEDIR, o, f)
+                    data["files"][full] = []
+                    info = MediaInfo.parse(full)
                     for track in info.tracks:
                         d = {}
                         for k, v in track.__dict__.iteritems():
                             if not type(v) == types.InstanceType:
                                 d[k] = v
-                        data["files"][f].append(d)
+                        data["files"][full].append(d)
                 print config.db.save(data)
                 try:
                     content_type, poster = get_poster(match["imdb_id"]["value"])

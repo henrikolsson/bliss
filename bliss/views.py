@@ -165,7 +165,7 @@ def movie(movieid):
 def video_movie(type, playid, format):
     if (type == "movie"):
         doc = config.db[playid]
-        sources = map(lambda f: '/mnt/pub/movies/%s/%s' % (playid, f), sorted(doc['files'].keys()))
+        sources = sorted(doc['files'].keys())
         return transcode(sources, format, g.bitrate, g.h264_compatability)
     elif (type == "tv"):
         return transcode(['http://chani:9981/stream/channelid/%d' % int(playid)], format, g.bitrate, g.h264_compatability)
